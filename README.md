@@ -22,11 +22,7 @@ The app now runs as a real local workflow:
   - can filter and analyze all named raters
 
 Admin access is not shown in the UI as a separate toggle.
-The role is assigned automatically when the entered name matches:
-
-```text
-arik_admin
-```
+The role is assigned automatically when the entered name matches
 
 ## Main Features
 
@@ -57,96 +53,12 @@ arik_admin
 
 ## Run
 
-```bash
-npm install
-npm run dev
-```
-
 On the first real run:
 
 1. Login with a name, or continue as `anonymous`
 2. If you are the admin user, login as `arik_admin`
 3. Import models from CSV / Excel
 4. Start rating immediately
-
-## Build
-
-Unpacked app:
-
-```bash
-npm run build:dir
-```
-
-Installer:
-
-```bash
-npm run build
-```
-
-Outputs:
-
-```text
-release/win-unpacked/
-release/RateIt Local Setup 1.0.0.exe
-```
-
-## Local Data
-
-SQLite database file:
-
-```text
-%APPDATA%/RateIt Local/rateit-local.db
-```
-
-Managed uploaded images:
-
-```text
-%APPDATA%/RateIt Local/managed-images/
-```
-
-## Persistence Rules
-
-- Named users: ratings are persisted in SQLite and loaded again on next app launch.
-- Anonymous users: ratings are temporary in-memory only and are cleared when the app closes or the session is reset.
-- Named users also keep their last viewed model position.
-
-## Updated Structure
-
-```text
-src/
-  main/
-    database.ts
-    index.ts
-    ipc.ts
-  preload/
-    index.ts
-  renderer/
-    App.tsx
-    index.html
-    main.tsx
-    vite-env.d.ts
-    components/
-      AppSidebar.tsx
-      FixedImage.tsx
-      ModelCard.tsx
-      RatingButtons.tsx
-      SummaryTable.tsx
-    hooks/
-      useAppSession.ts
-      useModelFilters.ts
-    pages/
-      ImageImportPage.tsx
-      ImageMappingPage.tsx
-      ImportModelsPage.tsx
-      LoginPage.tsx
-      ModelsPage.tsx
-      RatingPage.tsx
-      SummaryPage.tsx
-    styles/
-      app.css
-  shared/
-    constants.ts
-    types.ts
     utils.ts
 database/
   sample-models.csv
