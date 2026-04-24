@@ -1,0 +1,78 @@
+{
+  "name": "rateit-local",
+  "version": "1.0.0",
+  "description": "Local Windows desktop product rating app built with Electron, React, TypeScript, and SQLite.",
+  "main": "dist/main/index.js",
+  "author": "OpenAI Codex",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -k \"npm:dev:renderer\" \"npm:dev:main\" \"npm:dev:electron\"",
+    "dev:renderer": "vite",
+    "dev:main": "tsc -p tsconfig.node.json --watch",
+    "dev:electron": "node scripts/dev-electron.cjs",
+    "dev:web": "concurrently -k \"npm:dev:renderer\" \"npm:dev:server\"",
+    "dev:server": "node --experimental-sqlite server/index.js",
+    "build": "vite build && tsc -p tsconfig.node.json && electron-builder",
+    "build:dir": "vite build && tsc -p tsconfig.node.json && electron-builder --dir",
+    "build:web": "vite build",
+    "start": "node --experimental-sqlite server/index.js",
+    "start:server-install": "cd server && npm install",
+    "lint": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "papaparse": "^5.5.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.30.0",
+    "sql.js": "^1.13.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.4"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@types/papaparse": "^5.3.16",
+    "@types/react": "^18.3.22",
+    "@types/react-dom": "^18.3.7",
+    "@types/sql.js": "^1.4.11",
+    "@vitejs/plugin-react": "^4.4.1",
+    "autoprefixer": "^10.4.21",
+    "concurrently": "^9.1.2",
+    "electron": "^35.2.0",
+    "electron-builder": "^26.0.12",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.8.3",
+    "vite": "^5.4.19",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.local.rateit",
+    "productName": "RateIt Local",
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "extraResources": [
+      {
+        "from": "node_modules/sql.js/dist/sql-wasm.wasm",
+        "to": "sql-wasm.wasm"
+      }
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
