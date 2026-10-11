@@ -31,10 +31,31 @@ npm run dev
 ## הרצה עם Docker
 
 ```bash
+cp .env.example .env   # docker compose קורא .env אוטומטית
 docker compose up -d --build
 ```
 
 הנתונים (DB + תמונות) נשמרים ב-volume בשם `rateit_data`, כך שהם שורדים restart/rebuild.
+
+## פריסה על שרת (Proxmox / VM / כל שרת עם Docker) + Cloudflare Tunnel
+
+```bash
+# על השרת (למשל VM ב-Proxmox):
+git clone <repo-url> rateit && cd rateit
+cp .env.example .env
+nano .env   # למלא ADMIN_USERNAMES, NEXT_PUBLIC_GA_MEASUREMENT_ID, CLOUDFLARE_TUNNEL_TOKEN
+docker compose up -d --build
+```
+
+ה-`docker-compose.yml` כולל שני שירותים:
+- **rateit** — האפליקציה עצמה, פורט 3000 (אפשר להסיר את מיפוי הפורט החוצה לגמרי אם הגישה היחידה היא דרך הטאנל)
+- **cloudflared** — Cloudflare Tunnel, חושף את האפליקציה לציבור בלי לפתוח פורטים בראוטר/פיירוול
+
+להקמת הטאנל:
+1. ב-Cloudflare Zero Trust Dashboard: Networks → Tunnels → Create a tunnel → Cloudflared → Docker
+2. מעתיקים את ה-`--token` מתוך הפקודה שמוצגת, שמים ב-`.env` בתור `CLOUDFLARE_TUNNEL_TOKEN`
+3. בלשונית Public Hostname של הטאנל: מגדירים Hostname (למשל `rateit.yourdomain.com`) שמצביע על Service `http://rateit:3000` (שם השירות בתוך רשת ה-Docker, לא localhost)
+4. `docker compose up -d --build`
 
 ## משתני סביבה
 
@@ -43,6 +64,8 @@ docker compose up -d --build
 | `PORT` | `3000` | פורט השרת |
 | `DATA_DIR` | `./data` | תיקייה לקובץ ה-DB ולתמונות שהועלו |
 | `ADMIN_USERNAMES` | (ריק) | רשימת שמות משתמש (מופרדים בפסיק, לא תלוי רישיות) שמקבלים הרשאת מנהל אוטומטית בכניסה |
+| `NEXT_PUBLIC_GA_MEASUREMENT_ID` | (ריק) | מזהה Google Analytics 4 (`G-XXXXXXXXXX`). נטמע בזמן build — שינוי דורש `docker compose build` מחדש |
+| `CLOUDFLARE_TUNNEL_TOKEN` | (ריק) | טוקן החיבור של ה-Tunnel מ-Cloudflare Zero Trust, לשירות ה-`cloudflared` |
 
 ## מבנה הפרויקט
 

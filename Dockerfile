@@ -9,6 +9,10 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
+
+# NEXT_PUBLIC_* vars are inlined at build time, so GA4 needs to be a build arg
+ARG NEXT_PUBLIC_GA_MEASUREMENT_ID
+ENV NEXT_PUBLIC_GA_MEASUREMENT_ID=$NEXT_PUBLIC_GA_MEASUREMENT_ID
 RUN npm run build
 
 # ─── Runtime Stage ────────────────────────────────────────────────────────
