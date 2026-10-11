@@ -9,7 +9,7 @@ services:
     container_name: rateit
     restart: unless-stopped
     ports:
-      - "3000:3000" # change the left side to use a different host port, or drop this once cloudflared is the only way in
+      - "127.0.0.1:3000:3000" # bound to localhost only — the native cloudflared service (see README) reaches it over localhost; nothing is exposed on the LAN
     volumes:
       - rateit_data:/app/data # persistent database + uploaded images
     environment:
@@ -19,7 +19,10 @@ services:
       # comma-separated usernames that get admin access automatically
       - ADMIN_USERNAMES=arik_admin
 
-  # Cloudflare Tunnel — exposes rateit publicly without opening any port on the server.
+  # OPTIONAL alternative to the native cloudflared systemd service set up by
+  # scripts/deploy-proxmox.sh. Only needed if you'd rather run the tunnel as a
+  # container instead of a host service. Not started by default (see the
+  # "docker-tunnel" profile) — enable with: docker compose --profile docker-tunnel up -d
   # Create the tunnel + public hostname in the Cloudflare Zero Trust dashboard
   # (Networks > Tunnels), pointing the hostname at http://rateit:3000, then
   # put the tunnel token in .env as CLOUDFLARE_TUNNEL_TOKEN.
@@ -27,6 +30,7 @@ services:
     image: cloudflare/cloudflared:latest
     container_name: rateit-cloudflared
     restart: unless-stopped
+    profiles: ["docker-tunnel"]
     command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
     depends_on:
       - rateit

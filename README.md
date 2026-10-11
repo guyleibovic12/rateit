@@ -39,23 +39,35 @@ docker compose up -d --build
 
 ## פריסה על שרת (Proxmox / VM / כל שרת עם Docker) + Cloudflare Tunnel
 
+הדרך המומלצת (ברירת מחדל): **cloudflared כשירות מערכת native** (לא container) שמתחבר ל-`localhost:3000`. הפורט של האפליקציה נשאר קשור ל-`127.0.0.1` בלבד — שום דבר לא נחשף ברשת מלבד דרך הטאנל.
+
 ```bash
-# על השרת (למשל VM ב-Proxmox):
+# על השרת (למשל VM/LXC ב-Proxmox), עם Docker + docker compose מותקנים מראש:
 git clone <repo-url> rateit && cd rateit
-cp .env.example .env
-nano .env   # למלא ADMIN_USERNAMES, NEXT_PUBLIC_GA_MEASUREMENT_ID, CLOUDFLARE_TUNNEL_TOKEN
-docker compose up -d --build
+./scripts/deploy-proxmox.sh
 ```
 
-ה-`docker-compose.yml` כולל שני שירותים:
-- **rateit** — האפליקציה עצמה, פורט 3000 (אפשר להסיר את מיפוי הפורט החוצה לגמרי אם הגישה היחידה היא דרך הטאנל)
-- **cloudflared** — Cloudflare Tunnel, חושף את האפליקציה לציבור בלי לפתוח פורטים בראוטר/פיירוול
+הסקריפט (`scripts/deploy-proxmox.sh`) עושה הכל אוטומטית:
+1. מתקין `cloudflared` (apt repo של Cloudflare) אם חסר
+2. `cloudflared tunnel login` — **הצעד היחיד שדורש אינטראקציה**: נפתח קישור, מאשרים בדפדפן מול חשבון ה-Cloudflare ובוחרים את הדומיין `guyleibo.tech`
+3. יוצר טאנל בשם `rateit` (אם לא קיים כבר)
+4. כותב `/etc/cloudflared/config.yml` עם ingress rule ל-`rateit.guyleibo.tech` → `http://localhost:3000`
+5. `cloudflared tunnel route dns` — יוצר את רשומת ה-DNS אוטומטית
+6. מתקין את `cloudflared` כ-systemd service (עולה אוטומטית אחרי reboot)
+7. יוצר `.env` מ-`.env.example` (עם `ADMIN_USERNAMES=arik_admin`, `NEXT_PUBLIC_GA_MEASUREMENT_ID=G-4CHYG42M2R`) אם לא קיים
+8. `docker compose up -d --build` — מרים את האפליקציה
 
-להקמת הטאנל:
-1. ב-Cloudflare Zero Trust Dashboard: Networks → Tunnels → Create a tunnel → Cloudflared → Docker
-2. מעתיקים את ה-`--token` מתוך הפקודה שמוצגת, שמים ב-`.env` בתור `CLOUDFLARE_TUNNEL_TOKEN`
-3. בלשונית Public Hostname של הטאנל: מגדירים Hostname (למשל `rateit.yourdomain.com`) שמצביע על Service `http://rateit:3000` (שם השירות בתוך רשת ה-Docker, לא localhost)
-4. `docker compose up -d --build`
+בסיום: האפליקציה זמינה ב-**https://rateit.guyleibo.tech**
+
+אפשר להריץ את הסקריפט שוב בבטחה (idempotent) — הוא מדלג על שלבים שכבר בוצעו.
+
+### חלופה: cloudflared כ-container
+
+אם עדיף טאנל בתוך Docker במקום systemd service, יש שירות `cloudflared` מוכן ב-`docker-compose.yml` תחת profile נפרד (לא עולה כברירת מחדל):
+1. ב-Cloudflare Zero Trust Dashboard: Networks → Tunnels → Create a tunnel → Cloudflared → Docker, מעתיקים את ה-`--token`
+2. שמים ב-`.env` בתור `CLOUDFLARE_TUNNEL_TOKEN`
+3. בלשונית Public Hostname של הטאנל: Service = `http://rateit:3000` (שם השירות ברשת ה-Docker, לא localhost)
+4. `docker compose --profile docker-tunnel up -d --build`
 
 ## משתני סביבה
 
