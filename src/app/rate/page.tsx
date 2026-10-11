@@ -30,6 +30,7 @@ export default function RateHomePage() {
   const [models, setModels] = useState<ModelWithImages[] | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
+  const [brandFilter, setBrandFilter] = useState<string>("");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -52,12 +53,19 @@ export default function RateHomePage() {
     return m?.id ?? null;
   }, [models]);
 
+  const brands = useMemo(() => {
+    if (!models) return [];
+    const set = new Set(models.map((m) => m.brand).filter((b): b is string => !!b));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [models]);
+
   const filtered = useMemo(() => {
     if (!models) return [];
     const q = search.trim().toLowerCase();
     return models.filter((m) => {
       if (filter === "rated" && m.myRating === null) return false;
       if (filter === "unrated" && m.myRating !== null) return false;
+      if (brandFilter && m.brand !== brandFilter) return false;
       if (!q) return true;
       return (
         m.name.toLowerCase().includes(q) ||
@@ -65,7 +73,7 @@ export default function RateHomePage() {
         (m.brand || "").toLowerCase().includes(q)
       );
     });
-  }, [models, search, filter]);
+  }, [models, search, filter, brandFilter]);
 
   function continueRating() {
     const target = user?.last_model_id || firstUnratedId || models?.[0]?.id;
@@ -140,6 +148,30 @@ export default function RateHomePage() {
             </button>
           ))}
         </div>
+
+        {brands.length > 1 && (
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+            <button
+              onClick={() => setBrandFilter("")}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
+                brandFilter === "" ? "bg-accent text-white" : "bg-surface-2 text-muted"
+              }`}
+            >
+              כל המותגים
+            </button>
+            {brands.map((b) => (
+              <button
+                key={b}
+                onClick={() => setBrandFilter(b)}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
+                  brandFilter === b ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                }`}
+              >
+                {b}
+              </button>
+            ))}
+          </div>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           {filtered.map((m) => (
