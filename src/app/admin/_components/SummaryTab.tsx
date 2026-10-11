@@ -244,7 +244,7 @@ function StatCard({ label, value }: { label: string; value: number }) {
 function ScorePill({ value }: { value: number }) {
   return (
     <span className="text-sm font-semibold bg-surface-2 border border-border rounded-full px-2.5 py-1 text-accent-2">
-      {value.toFixed(1)} ★
+      {value.toFixed(1)} / 3
     </span>
   );
 }

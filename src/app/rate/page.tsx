@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useUser } from "@/lib/useUser";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -11,22 +11,25 @@ interface ModelWithImages {
   sku: string | null;
   brand: string | null;
   category: string | null;
-  notes: string | null;
   images: string[];
   myRating: number | null;
 }
 
-const STAR_LABELS = ["גרוע", "לא טוב", "סביר", "טוב", "מצוין"];
+const SCORE_LABELS: Record<number, string> = { 1: "לא טוב", 2: "טוב", 3: "מצוין" };
+const SCORE_COLORS: Record<number, string> = {
+  1: "bg-danger text-white",
+  2: "bg-accent-2 text-black",
+  3: "bg-success text-white",
+};
 
-export default function RatePage() {
+type Filter = "all" | "rated" | "unrated";
+
+export default function RateHomePage() {
   const { user, loading } = useUser();
   const router = useRouter();
-
   const [models, setModels] = useState<ModelWithImages[] | null>(null);
-  const [index, setIndex] = useState(0);
-  const [imageIdx, setImageIdx] = useState(0);
-  const [justRated, setJustRated] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -35,93 +38,39 @@ export default function RatePage() {
   useEffect(() => {
     fetch("/api/models")
       .then((r) => r.json())
-      .then((data) => {
-        const list: ModelWithImages[] = data.models || [];
-        setModels(list);
-
-        const lastId = user?.last_model_id;
-        let startIndex = 0;
-        if (lastId) {
-          const i = list.findIndex((m) => m.id === lastId);
-          if (i >= 0) startIndex = i;
-        } else {
-          const firstUnrated = list.findIndex((m) => m.myRating === null);
-          if (firstUnrated >= 0) startIndex = firstUnrated;
-        }
-        setIndex(startIndex);
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then((data) => setModels(data.models || []));
   }, [user?.id]);
-
-  const current = models && models.length > 0 ? models[index] : null;
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- reset local UI state when the active model changes
-    setImageIdx(0);
-    setJustRated(false);
-    if (current) {
-      fetch("/api/state", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ modelId: current.id }),
-      });
-    }
-  }, [current?.id]);
-
-  const rate = useCallback(
-    async (score: number) => {
-      if (!current || saving) return;
-      setSaving(true);
-      try {
-        await fetch("/api/ratings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ modelId: current.id, score }),
-        });
-        setModels((prev) =>
-          prev
-            ? prev.map((m) => (m.id === current.id ? { ...m, myRating: score } : m))
-            : prev
-        );
-        setJustRated(true);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [current, saving]
-  );
-
-  const goNext = useCallback(() => {
-    setIndex((i) => {
-      if (!models) return i;
-      if (i < models.length - 1) return i + 1;
-      router.push("/");
-      return i;
-    });
-  }, [models, router]);
-
-  const goPrev = useCallback(() => {
-    setIndex((i) => Math.max(0, i - 1));
-  }, []);
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (["1", "2", "3", "4", "5"].includes(e.key)) {
-        rate(Number(e.key));
-      } else if (e.key === "ArrowRight") {
-        goNext();
-      } else if (e.key === "ArrowLeft") {
-        goPrev();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [rate, goNext, goPrev]);
 
   const ratedCount = useMemo(
     () => (models ? models.filter((m) => m.myRating !== null).length : 0),
     [models]
   );
+
+  const firstUnratedId = useMemo(() => {
+    if (!models) return null;
+    const m = models.find((m) => m.myRating === null);
+    return m?.id ?? null;
+  }, [models]);
+
+  const filtered = useMemo(() => {
+    if (!models) return [];
+    const q = search.trim().toLowerCase();
+    return models.filter((m) => {
+      if (filter === "rated" && m.myRating === null) return false;
+      if (filter === "unrated" && m.myRating !== null) return false;
+      if (!q) return true;
+      return (
+        m.name.toLowerCase().includes(q) ||
+        (m.sku || "").toLowerCase().includes(q) ||
+        (m.brand || "").toLowerCase().includes(q)
+      );
+    });
+  }, [models, search, filter]);
+
+  function continueRating() {
+    const target = user?.last_model_id || firstUnratedId || models?.[0]?.id;
+    if (target) router.push(`/rate/${target}`);
+  }
 
   if (loading || !user || models === null) {
     return (
@@ -139,123 +88,98 @@ export default function RatePage() {
     );
   }
 
-  if (!current) {
-    return (
-      <main className="min-h-screen flex items-center justify-center p-6 text-center">
-        <p className="text-muted">אין עדיין דגמים לדירוג.</p>
-      </main>
-    );
-  }
-
   return (
-    <main className="min-h-screen flex flex-col">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border">
-        <button onClick={() => router.push("/")} className="text-muted text-sm">
-          ← בית
-        </button>
-        <span className="text-sm text-muted">
-          {ratedCount} / {models.length} דורגו
-        </span>
+    <main className="min-h-screen pb-10">
+      <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
+        <div>
+          <h1 className="text-lg font-bold">דגמים לדירוג</h1>
+          <p className="text-muted text-xs">
+            {ratedCount} / {models.length} דורגו
+          </p>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium truncate max-w-[100px]">{user.name}</span>
           <ThemeToggle />
+          <button
+            onClick={() => router.push("/")}
+            className="text-sm text-muted border border-border rounded-lg px-3 py-1.5"
+          >
+            בית
+          </button>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col px-4 py-4 max-w-md w-full mx-auto">
-        <div className="relative aspect-square w-full rounded-2xl bg-white overflow-hidden border border-border mb-4">
-          {current.images.length > 0 ? (
-            <img
-              src={`/api/files/${current.images[imageIdx]}`}
-              alt={current.name}
-              className="w-full h-full object-contain p-3"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-5xl text-muted">
-              👟
-            </div>
-          )}
+      <div className="px-4 pt-4 max-w-3xl mx-auto space-y-4">
+        <button
+          onClick={continueRating}
+          className="w-full rounded-xl bg-accent py-3.5 font-semibold text-white active:scale-[0.98] transition"
+        >
+          {ratedCount === 0 ? "התחל לדרג" : "המשך לדרג →"}
+        </button>
 
-          {current.images.length > 1 && (
-            <div className="absolute bottom-3 inset-x-0 flex justify-center gap-1.5">
-              {current.images.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setImageIdx(i)}
-                  className={`w-2 h-2 rounded-full transition ${
-                    i === imageIdx ? "bg-accent w-6" : "bg-black/15"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="חיפוש לפי שם, מותג או מק&quot;ט..."
+          className="w-full rounded-xl bg-surface border border-border px-4 py-2.5 text-sm outline-none focus:border-accent transition"
+        />
+
+        <div className="flex gap-1.5">
+          {[
+            { id: "all", label: "הכל" },
+            { id: "unrated", label: "טרם דורגו" },
+            { id: "rated", label: "דורגו" },
+          ].map((f) => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id as Filter)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                filter === f.id ? "bg-accent text-white" : "bg-surface-2 text-muted"
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
         </div>
 
-        <div className="text-center mb-5 space-y-1">
-          <h1 className="text-xl font-bold">{current.name}</h1>
-          <p className="text-muted text-sm">
-            {[current.brand, current.category, current.sku].filter(Boolean).join(" · ")}
-          </p>
-          {current.notes && <p className="text-muted text-sm pt-1">{current.notes}</p>}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {filtered.map((m) => (
+            <button
+              key={m.id}
+              onClick={() => router.push(`/rate/${m.id}`)}
+              className="text-right bg-surface border border-border rounded-xl overflow-hidden active:scale-[0.98] transition"
+            >
+              <div className="relative aspect-square w-full bg-white">
+                {m.images[0] ? (
+                  <img
+                    src={`/api/files/${m.images[0]}`}
+                    alt={m.name}
+                    className="w-full h-full object-contain p-2"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-3xl text-muted">
+                    👟
+                  </div>
+                )}
+                {m.myRating !== null && (
+                  <span
+                    className={`absolute top-1.5 left-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${SCORE_COLORS[m.myRating]}`}
+                  >
+                    {SCORE_LABELS[m.myRating]}
+                  </span>
+                )}
+              </div>
+              <div className="p-2">
+                <p className="text-xs font-medium truncate">{m.name}</p>
+                <p className="text-[11px] text-muted truncate">{m.sku}</p>
+              </div>
+            </button>
+          ))}
         </div>
 
-        <StarRow value={current.myRating} onRate={rate} disabled={saving} />
-
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            onClick={goPrev}
-            disabled={index === 0}
-            className="rounded-xl border border-border py-3.5 font-medium text-muted disabled:opacity-40 active:scale-[0.98] transition"
-          >
-            ← הקודם
-          </button>
-          <button
-            onClick={goNext}
-            className={`rounded-xl py-3.5 font-semibold active:scale-[0.98] transition ${
-              justRated ? "bg-accent text-white" : "border border-border text-muted"
-            }`}
-          >
-            {justRated ? "לדגם הבא →" : "דלג →"}
-          </button>
-        </div>
-        <p className="text-center text-muted text-xs mt-2">אפשר גם לנווט עם מקשי החצים</p>
+        {filtered.length === 0 && (
+          <p className="text-muted text-sm text-center py-8">לא נמצאו דגמים תואמים</p>
+        )}
       </div>
     </main>
-  );
-}
-
-function StarRow({
-  value,
-  onRate,
-  disabled,
-}: {
-  value: number | null;
-  onRate: (score: number) => void;
-  disabled: boolean;
-}) {
-  const [hover, setHover] = useState<number | null>(null);
-  const display = hover ?? value ?? 0;
-
-  return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex gap-1" dir="ltr">
-        {[1, 2, 3, 4, 5].map((n) => (
-          <button
-            key={n}
-            disabled={disabled}
-            onClick={() => onRate(n)}
-            onMouseEnter={() => setHover(n)}
-            onMouseLeave={() => setHover(null)}
-            className="text-4xl leading-none transition active:scale-110"
-            aria-label={`דרג ${n} כוכבים`}
-          >
-            <span className={n <= display ? "text-accent-2" : "text-border"}>★</span>
-          </button>
-        ))}
-      </div>
-      <p className="text-muted text-sm h-5">
-        {display > 0 ? STAR_LABELS[display - 1] : "הקש לדירוג (או 1-5 במקלדת)"}
-      </p>
-    </div>
   );
 }

@@ -12,8 +12,8 @@ export async function POST(req: NextRequest) {
     const score = Number(body.score);
 
     if (!modelId) throw new Error("חובה לציין דגם");
-    if (!Number.isInteger(score) || score < 1 || score > 5) {
-      throw new Error("ציון חייב להיות בין 1 ל-5");
+    if (!Number.isInteger(score) || score < 1 || score > 3) {
+      throw new Error("ציון חייב להיות בין 1 ל-3");
     }
 
     const model = db.prepare(`SELECT id FROM models WHERE id = ?`).get(modelId);

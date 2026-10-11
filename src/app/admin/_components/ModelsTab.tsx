@@ -148,7 +148,7 @@ export default function ModelsTab() {
               <p className="font-medium truncate">{m.name}</p>
               <p className="text-muted text-xs truncate">
                 {[m.brand, m.sku].filter(Boolean).join(" · ") || "—"} · {m.images.length} תמונות
-                {m.ratingCount ? ` · ${m.ratingCount} דירוגים · ${m.avgScore?.toFixed(1)}★` : ""}
+                {m.ratingCount ? ` · ${m.ratingCount} דירוגים · ${m.avgScore?.toFixed(1)}/3` : ""}
               </p>
             </div>
             <button

@@ -3,17 +3,18 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { useUser } from "@/lib/useUser";
+import OverviewTab from "./_components/OverviewTab";
 import ModelsTab from "./_components/ModelsTab";
 import ImagesTab from "./_components/ImagesTab";
 import SummaryTab from "./_components/SummaryTab";
 import ThemeToggle from "@/components/ThemeToggle";
 
-type Tab = "models" | "images" | "summary";
+type Tab = "overview" | "models" | "images" | "summary";
 
 export default function AdminPage() {
   const { user, loading, refresh } = useUser();
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>("models");
+  const [tab, setTab] = useState<Tab>("overview");
 
   useEffect(() => {
     if (!loading) {
@@ -60,6 +61,7 @@ export default function AdminPage() {
 
       <nav className="flex gap-1 px-4 py-3 overflow-x-auto no-scrollbar">
         {[
+          { id: "overview", label: "בית" },
           { id: "models", label: "דגמים" },
           { id: "images", label: "תמונות" },
           { id: "summary", label: "סיכום" },
@@ -77,6 +79,7 @@ export default function AdminPage() {
       </nav>
 
       <div className="px-4 max-w-2xl mx-auto">
+        {tab === "overview" && <OverviewTab onNavigate={setTab} />}
         {tab === "models" && <ModelsTab />}
         {tab === "images" && <ImagesTab />}
         {tab === "summary" && <SummaryTab />}
