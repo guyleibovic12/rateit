@@ -30,7 +30,7 @@ export default function RateHomePage() {
   const [models, setModels] = useState<ModelWithImages[] | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
-  const [brandFilter, setBrandFilter] = useState<string>("");
+  const [brandFilter, setBrandFilter] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -65,7 +65,7 @@ export default function RateHomePage() {
     return models.filter((m) => {
       if (filter === "rated" && m.myRating === null) return false;
       if (filter === "unrated" && m.myRating !== null) return false;
-      if (brandFilter && m.brand !== brandFilter) return false;
+      if (brandFilter.size > 0 && !(m.brand && brandFilter.has(m.brand))) return false;
       if (!q) return true;
       return (
         m.name.toLowerCase().includes(q) ||
@@ -74,6 +74,15 @@ export default function RateHomePage() {
       );
     });
   }, [models, search, filter, brandFilter]);
+
+  function toggleBrand(b: string) {
+    setBrandFilter((prev) => {
+      const next = new Set(prev);
+      if (next.has(b)) next.delete(b);
+      else next.add(b);
+      return next;
+    });
+  }
 
   function continueRating() {
     const target = user?.last_model_id || firstUnratedId || models?.[0]?.id;
@@ -152,9 +161,9 @@ export default function RateHomePage() {
         {brands.length > 1 && (
           <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
             <button
-              onClick={() => setBrandFilter("")}
+              onClick={() => setBrandFilter(new Set())}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-                brandFilter === "" ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                brandFilter.size === 0 ? "bg-accent text-white" : "bg-surface-2 text-muted"
               }`}
             >
               כל המותגים
@@ -162,9 +171,9 @@ export default function RateHomePage() {
             {brands.map((b) => (
               <button
                 key={b}
-                onClick={() => setBrandFilter(b)}
+                onClick={() => toggleBrand(b)}
                 className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-                  brandFilter === b ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                  brandFilter.has(b) ? "bg-accent text-white" : "bg-surface-2 text-muted"
                 }`}
               >
                 {b}
