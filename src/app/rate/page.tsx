@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@/lib/useUser";
+import ThemeToggle from "@/components/ThemeToggle";
 
 interface ModelWithImages {
   id: string;
@@ -152,7 +153,10 @@ export default function RatePage() {
         <span className="text-sm text-muted">
           {ratedCount} / {models.length} דורגו
         </span>
-        <span className="text-sm font-medium truncate max-w-[100px]">{user.name}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium truncate max-w-[100px]">{user.name}</span>
+          <ThemeToggle />
+        </div>
       </header>
 
       <div className="flex-1 flex flex-col px-4 py-4 max-w-md w-full mx-auto">

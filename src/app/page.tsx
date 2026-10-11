@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useUser } from "@/lib/useUser";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export default function HomePage() {
   const { user, loading, refresh } = useUser();
@@ -37,7 +38,10 @@ export default function HomePage() {
 
   if (!loading && user) {
     return (
-      <main className="min-h-screen flex items-center justify-center p-6">
+      <main className="min-h-screen flex items-center justify-center p-6 relative">
+        <div className="absolute top-4 left-4">
+          <ThemeToggle />
+        </div>
         <div className="w-full max-w-sm text-center space-y-4">
           <p className="text-muted">מחובר בשם</p>
           <p className="text-2xl font-bold">{user.name}</p>
@@ -62,7 +66,10 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-6">
+    <main className="min-h-screen flex items-center justify-center p-6 relative">
+      <div className="absolute top-4 left-4">
+        <ThemeToggle />
+      </div>
       <div className="w-full max-w-sm space-y-8">
         <div className="text-center space-y-2">
           <div className="mx-auto w-16 h-16 rounded-2xl bg-accent flex items-center justify-center text-3xl mb-4">

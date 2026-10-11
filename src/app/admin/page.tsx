@@ -6,6 +6,7 @@ import { useUser } from "@/lib/useUser";
 import ModelsTab from "./_components/ModelsTab";
 import ImagesTab from "./_components/ImagesTab";
 import SummaryTab from "./_components/SummaryTab";
+import ThemeToggle from "@/components/ThemeToggle";
 
 type Tab = "models" | "images" | "summary";
 
@@ -36,7 +37,8 @@ export default function AdminPage() {
           <h1 className="text-lg font-bold">ניהול RateIt</h1>
           <p className="text-muted text-xs">מחובר בשם {user.name}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <button
             onClick={() => router.push("/rate")}
             className="text-sm text-muted border border-border rounded-lg px-3 py-1.5"

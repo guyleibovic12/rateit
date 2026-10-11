@@ -1,6 +1,34 @@
 @import "tailwindcss";
 
 :root {
+  --background: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef0f4;
+  --foreground: #14161c;
+  --muted: #6b7280;
+  --accent: #ff5a36;
+  --accent-2: #b3690a;
+  --border: #e3e5ea;
+  --success: #1f9d55;
+  --danger: #d6295a;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --background: #0f1115;
+    --surface: #171a21;
+    --surface-2: #1f232c;
+    --foreground: #f5f6f8;
+    --muted: #8b92a3;
+    --accent: #ff5a36;
+    --accent-2: #ffb020;
+    --border: #2a2f3a;
+    --success: #3ddc84;
+    --danger: #ff5577;
+  }
+}
+
+:root[data-theme="dark"] {
   --background: #0f1115;
   --surface: #171a21;
   --surface-2: #1f232c;
@@ -37,6 +65,7 @@ body {
 body {
   font-family: var(--font-sans), "Segoe UI", Arial, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 * {
