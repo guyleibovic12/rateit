@@ -14,12 +14,14 @@ export async function GET() {
       modelName: string;
       modelSku: string | null;
       modelBrand: string | null;
+      modelCategory: string | null;
     }
 
     const rows = db
       .prepare(
         `SELECT r.score, r.updated_at,
-                m.id as modelId, m.name as modelName, m.sku as modelSku, m.brand as modelBrand
+                m.id as modelId, m.name as modelName, m.sku as modelSku,
+                m.brand as modelBrand, m.category as modelCategory
          FROM ratings r
          JOIN models m ON m.id = r.model_id
          WHERE r.user_id = ?

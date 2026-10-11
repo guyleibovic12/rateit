@@ -31,6 +31,7 @@ export default function RateHomePage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filter>("all");
   const [brandFilter, setBrandFilter] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -59,6 +60,12 @@ export default function RateHomePage() {
     return Array.from(set).sort((a, b) => a.localeCompare(b));
   }, [models]);
 
+  const categories = useMemo(() => {
+    if (!models) return [];
+    const set = new Set(models.map((m) => m.category).filter((c): c is string => !!c));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [models]);
+
   const filtered = useMemo(() => {
     if (!models) return [];
     const q = search.trim().toLowerCase();
@@ -66,6 +73,7 @@ export default function RateHomePage() {
       if (filter === "rated" && m.myRating === null) return false;
       if (filter === "unrated" && m.myRating !== null) return false;
       if (brandFilter.size > 0 && !(m.brand && brandFilter.has(m.brand))) return false;
+      if (categoryFilter.size > 0 && !(m.category && categoryFilter.has(m.category))) return false;
       if (!q) return true;
       return (
         m.name.toLowerCase().includes(q) ||
@@ -73,13 +81,13 @@ export default function RateHomePage() {
         (m.brand || "").toLowerCase().includes(q)
       );
     });
-  }, [models, search, filter, brandFilter]);
+  }, [models, search, filter, brandFilter, categoryFilter]);
 
-  function toggleBrand(b: string) {
-    setBrandFilter((prev) => {
+  function toggleInSet(setter: typeof setBrandFilter, value: string) {
+    setter((prev) => {
       const next = new Set(prev);
-      if (next.has(b)) next.delete(b);
-      else next.add(b);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
       return next;
     });
   }
@@ -165,27 +173,53 @@ export default function RateHomePage() {
         </div>
 
         {brands.length > 1 && (
-          <div className="flex flex-wrap gap-1.5 pb-1">
-            <button
-              onClick={() => setBrandFilter(new Set())}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-                brandFilter.size === 0 ? "bg-accent text-white" : "bg-surface-2 text-muted"
-              }`}
-            >
-              כל המותגים
-            </button>
-            {brands.map((b) => (
-              <button
-                key={b}
-                onClick={() => toggleBrand(b)}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${
-                  brandFilter.has(b) ? "bg-accent text-white" : "bg-surface-2 text-muted"
-                }`}
-              >
-                {b}
-              </button>
-            ))}
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-medium text-muted px-1">מותג</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {brands.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => toggleInSet(setBrandFilter, b)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                    brandFilter.has(b) ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
           </div>
+        )}
+
+        {categories.length > 1 && (
+          <div className="space-y-1.5">
+            <h3 className="text-xs font-medium text-muted px-1">משפחה</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => toggleInSet(setCategoryFilter, c)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                    categoryFilter.has(c) ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {(brandFilter.size > 0 || categoryFilter.size > 0) && (
+          <button
+            onClick={() => {
+              setBrandFilter(new Set());
+              setCategoryFilter(new Set());
+            }}
+            className="text-sm text-muted underline"
+          >
+            נקה סינון מותג/משפחה
+          </button>
         )}
 
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">

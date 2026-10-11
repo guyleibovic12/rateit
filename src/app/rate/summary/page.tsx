@@ -12,6 +12,7 @@ interface MyRating {
   modelName: string;
   modelSku: string | null;
   modelBrand: string | null;
+  modelCategory: string | null;
   image: string | null;
 }
 
@@ -40,10 +41,20 @@ function formatDay(iso: string): string {
   return date.toLocaleDateString("he-IL");
 }
 
+function toggleInSet(set: Set<string>, value: string): Set<string> {
+  const next = new Set(set);
+  if (next.has(value)) next.delete(value);
+  else next.add(value);
+  return next;
+}
+
 export default function MySummaryPage() {
   const { user, loading } = useUser();
   const router = useRouter();
   const [data, setData] = useState<MySummary | null>(null);
+  const [scoreFilter, setScoreFilter] = useState<number | null>(null);
+  const [brandFilter, setBrandFilter] = useState<Set<string>>(new Set());
+  const [categoryFilter, setCategoryFilter] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -55,17 +66,46 @@ export default function MySummaryPage() {
       .then(setData);
   }, [user?.id]);
 
-  const groups = useMemo(() => {
+  const brands = useMemo(() => {
     if (!data) return [];
+    const set = new Set(data.ratings.map((r) => r.modelBrand).filter((b): b is string => !!b));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const categories = useMemo(() => {
+    if (!data) return [];
+    const set = new Set(data.ratings.map((r) => r.modelCategory).filter((c): c is string => !!c));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const filteredRatings = useMemo(() => {
+    if (!data) return [];
+    return data.ratings.filter((r) => {
+      if (scoreFilter !== null && r.score !== scoreFilter) return false;
+      if (brandFilter.size > 0 && !(r.modelBrand && brandFilter.has(r.modelBrand))) return false;
+      if (categoryFilter.size > 0 && !(r.modelCategory && categoryFilter.has(r.modelCategory))) return false;
+      return true;
+    });
+  }, [data, scoreFilter, brandFilter, categoryFilter]);
+
+  const groups = useMemo(() => {
     const map = new Map<string, MyRating[]>();
-    for (const r of data.ratings) {
+    for (const r of filteredRatings) {
       const key = formatDay(r.updated_at);
       const list = map.get(key) || [];
       list.push(r);
       map.set(key, list);
     }
     return Array.from(map.entries());
-  }, [data]);
+  }, [filteredRatings]);
+
+  const hasActiveFilter = scoreFilter !== null || brandFilter.size > 0 || categoryFilter.size > 0;
+
+  function clearFilters() {
+    setScoreFilter(null);
+    setBrandFilter(new Set());
+    setCategoryFilter(new Set());
+  }
 
   if (loading || !user || data === null) {
     return (
@@ -109,12 +149,64 @@ export default function MySummaryPage() {
 
         <section className="grid grid-cols-3 gap-2">
           {[1, 2, 3].map((s) => (
-            <div key={s} className="bg-surface border border-border rounded-2xl p-3 text-center">
+            <button
+              key={s}
+              onClick={() => setScoreFilter((prev) => (prev === s ? null : s))}
+              className={`rounded-2xl p-3 text-center border transition active:scale-[0.98] ${
+                scoreFilter === s ? "bg-accent border-accent text-white" : "bg-surface border-border"
+              }`}
+            >
               <p className="text-2xl font-bold">{data.totals.byScore[s] ?? 0}</p>
-              <p className="text-muted text-xs">{SCORE_LABELS[s]}</p>
-            </div>
+              <p className={`text-xs ${scoreFilter === s ? "text-white/90" : "text-muted"}`}>
+                {SCORE_LABELS[s]}
+              </p>
+            </button>
           ))}
         </section>
+
+        {brands.length > 1 && (
+          <section className="space-y-1.5">
+            <h3 className="text-xs font-medium text-muted px-1">מותג</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {brands.map((b) => (
+                <button
+                  key={b}
+                  onClick={() => setBrandFilter((prev) => toggleInSet(prev, b))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                    brandFilter.has(b) ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                  }`}
+                >
+                  {b}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {categories.length > 1 && (
+          <section className="space-y-1.5">
+            <h3 className="text-xs font-medium text-muted px-1">משפחה</h3>
+            <div className="flex flex-wrap gap-1.5">
+              {categories.map((c) => (
+                <button
+                  key={c}
+                  onClick={() => setCategoryFilter((prev) => toggleInSet(prev, c))}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition ${
+                    categoryFilter.has(c) ? "bg-accent text-white" : "bg-surface-2 text-muted"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {hasActiveFilter && (
+          <button onClick={clearFilters} className="text-sm text-muted underline">
+            נקה סינון
+          </button>
+        )}
 
         {remaining > 0 && (
           <button
@@ -126,7 +218,9 @@ export default function MySummaryPage() {
         )}
 
         {groups.length === 0 ? (
-          <p className="text-muted text-sm text-center py-8">עדיין לא דירגת כלום</p>
+          <p className="text-muted text-sm text-center py-8">
+            {data.ratings.length === 0 ? "עדיין לא דירגת כלום" : "אין דירוגים תואמים לסינון"}
+          </p>
         ) : (
           groups.map(([day, items]) => (
             <section key={day} className="space-y-2">
