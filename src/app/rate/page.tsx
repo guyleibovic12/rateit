@@ -165,7 +165,7 @@ export default function RateHomePage() {
         </div>
 
         {brands.length > 1 && (
-          <div className="flex gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex flex-wrap gap-1.5 pb-1">
             <button
               onClick={() => setBrandFilter(new Set())}
               className={`px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition ${

@@ -59,7 +59,7 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <nav className="flex gap-1 px-4 py-3 overflow-x-auto no-scrollbar">
+      <nav className="flex flex-wrap gap-1 px-4 py-3">
         {[
           { id: "overview", label: "בית" },
           { id: "models", label: "דגמים" },
