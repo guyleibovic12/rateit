@@ -81,7 +81,7 @@ export default function MySummaryPage() {
     <main className="min-h-screen pb-10">
       <header className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-4 py-3 flex items-center justify-between">
         <button onClick={() => router.push("/rate")} className="text-muted text-sm">
-          ← רשימה
+          ← בית
         </button>
         <h1 className="text-lg font-bold">הסיכום שלי</h1>
         <ThemeToggle />

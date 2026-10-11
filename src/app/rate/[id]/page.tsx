@@ -158,7 +158,7 @@ export default function RateDetailPage() {
     <main className="min-h-screen flex flex-col">
       <header className="flex items-center justify-between px-4 py-3 border-b border-border">
         <button onClick={() => router.push("/rate")} className="text-muted text-sm">
-          ← רשימה
+          ← בית
         </button>
         <span className="text-sm text-muted">
           {ratedCount} / {models.length} דורגו
