@@ -117,6 +117,12 @@ export default function RateHomePage() {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
+            onClick={() => router.push("/rate/summary")}
+            className="text-sm text-muted border border-border rounded-lg px-3 py-1.5"
+          >
+            הסיכום שלי
+          </button>
+          <button
             onClick={() => router.push("/")}
             className="text-sm text-muted border border-border rounded-lg px-3 py-1.5"
           >

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useUser } from "@/lib/useUser";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -29,8 +29,17 @@ export default function RateDetailPage() {
 
   const [models, setModels] = useState<ModelWithImages[] | null>(null);
   const [imageIdx, setImageIdx] = useState(0);
-  const [justRated, setJustRated] = useState(false);
   const [saving, setSaving] = useState(false);
+  const advanceTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function clearPendingAdvance() {
+    if (advanceTimeout.current) {
+      clearTimeout(advanceTimeout.current);
+      advanceTimeout.current = null;
+    }
+  }
+
+  useEffect(() => clearPendingAdvance, []);
 
   useEffect(() => {
     if (!loading && !user) router.replace("/");
@@ -51,7 +60,6 @@ export default function RateDetailPage() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- reset local UI state when the active model changes
     setImageIdx(0);
-    setJustRated(false);
     if (current) {
       fetch("/api/state", {
         method: "POST",
@@ -61,28 +69,8 @@ export default function RateDetailPage() {
     }
   }, [current?.id]);
 
-  const rate = useCallback(
-    async (score: number) => {
-      if (!current || saving) return;
-      setSaving(true);
-      try {
-        await fetch("/api/ratings", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ modelId: current.id, score }),
-        });
-        setModels((prev) =>
-          prev ? prev.map((m) => (m.id === current.id ? { ...m, myRating: score } : m)) : prev
-        );
-        setJustRated(true);
-      } finally {
-        setSaving(false);
-      }
-    },
-    [current, saving]
-  );
-
   const goNext = useCallback(() => {
+    clearPendingAdvance();
     if (!models || index < 0) return;
     if (index < models.length - 1) {
       router.push(`/rate/${models[index + 1].id}`);
@@ -92,9 +80,44 @@ export default function RateDetailPage() {
   }, [models, index, router]);
 
   const goPrev = useCallback(() => {
+    clearPendingAdvance();
     if (!models || index <= 0) return;
     router.push(`/rate/${models[index - 1].id}`);
   }, [models, index, router]);
+
+  const rate = useCallback(
+    async (score: number) => {
+      if (!current || saving) return;
+      clearPendingAdvance();
+      setSaving(true);
+      try {
+        const alreadyAtScore = current.myRating === score;
+        if (alreadyAtScore) {
+          await fetch("/api/ratings", {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ modelId: current.id }),
+          });
+          setModels((prev) =>
+            prev ? prev.map((m) => (m.id === current.id ? { ...m, myRating: null } : m)) : prev
+          );
+        } else {
+          await fetch("/api/ratings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ modelId: current.id, score }),
+          });
+          setModels((prev) =>
+            prev ? prev.map((m) => (m.id === current.id ? { ...m, myRating: score } : m)) : prev
+          );
+          advanceTimeout.current = setTimeout(goNext, 350);
+        }
+      } finally {
+        setSaving(false);
+      }
+    },
+    [current, saving, goNext]
+  );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -199,7 +222,7 @@ export default function RateDetailPage() {
           ))}
         </div>
         <p className="text-center text-muted text-xs mt-2">
-          אפשר גם להקיש 1-3 במקלדת, וחצים לניווט
+          אפשר להקיש 1-3 במקלדת, חצים לניווט, ולחיצה חוזרת על אותו ציון מבטלת אותו
         </p>
 
         <div className="mt-6 grid grid-cols-2 gap-3">
@@ -212,11 +235,9 @@ export default function RateDetailPage() {
           </button>
           <button
             onClick={goNext}
-            className={`rounded-xl py-3.5 font-semibold active:scale-[0.98] transition ${
-              justRated ? "bg-accent text-white" : "border border-border text-muted"
-            }`}
+            className="rounded-xl border border-border py-3.5 font-medium text-muted active:scale-[0.98] transition"
           >
-            {justRated ? "לדגם הבא →" : "דלג →"}
+            דלג →
           </button>
         </div>
       </div>
