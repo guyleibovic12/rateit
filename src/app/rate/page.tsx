@@ -91,34 +91,37 @@ export default function RatePage() {
     [current, saving]
   );
 
+  const goNext = useCallback(() => {
+    setIndex((i) => {
+      if (!models) return i;
+      if (i < models.length - 1) return i + 1;
+      router.push("/");
+      return i;
+    });
+  }, [models, router]);
+
+  const goPrev = useCallback(() => {
+    setIndex((i) => Math.max(0, i - 1));
+  }, []);
+
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if (["1", "2", "3", "4", "5"].includes(e.key)) {
         rate(Number(e.key));
+      } else if (e.key === "ArrowRight") {
+        goNext();
+      } else if (e.key === "ArrowLeft") {
+        goPrev();
       }
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [rate]);
+  }, [rate, goNext, goPrev]);
 
   const ratedCount = useMemo(
     () => (models ? models.filter((m) => m.myRating !== null).length : 0),
     [models]
   );
-
-  function goNext() {
-    if (!models) return;
-    const nextUnrated = models.findIndex(
-      (m, i) => i > index && m.myRating === null
-    );
-    if (nextUnrated >= 0) {
-      setIndex(nextUnrated);
-    } else if (index < models.length - 1) {
-      setIndex(index + 1);
-    } else {
-      router.push("/");
-    }
-  }
 
   if (loading || !user || models === null) {
     return (
@@ -160,12 +163,12 @@ export default function RatePage() {
       </header>
 
       <div className="flex-1 flex flex-col px-4 py-4 max-w-md w-full mx-auto">
-        <div className="relative aspect-square w-full rounded-2xl bg-surface overflow-hidden border border-border mb-4">
+        <div className="relative aspect-square w-full rounded-2xl bg-white overflow-hidden border border-border mb-4">
           {current.images.length > 0 ? (
             <img
               src={`/api/files/${current.images[imageIdx]}`}
               alt={current.name}
-              className="w-full h-full object-cover"
+              className="w-full h-full object-contain p-3"
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-5xl text-muted">
@@ -180,7 +183,7 @@ export default function RatePage() {
                   key={i}
                   onClick={() => setImageIdx(i)}
                   className={`w-2 h-2 rounded-full transition ${
-                    i === imageIdx ? "bg-accent w-6" : "bg-white/40"
+                    i === imageIdx ? "bg-accent w-6" : "bg-black/15"
                   }`}
                 />
               ))}
@@ -198,22 +201,24 @@ export default function RatePage() {
 
         <StarRow value={current.myRating} onRate={rate} disabled={saving} />
 
-        {justRated && (
-          <div className="mt-6 grid grid-cols-2 gap-3 animate-in">
-            <button
-              onClick={() => router.push("/")}
-              className="rounded-xl border border-border py-3.5 font-medium text-muted active:scale-[0.98] transition"
-            >
-              חזרה לבית
-            </button>
-            <button
-              onClick={goNext}
-              className="rounded-xl bg-accent py-3.5 font-semibold text-white active:scale-[0.98] transition"
-            >
-              לדגם הבא →
-            </button>
-          </div>
-        )}
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            onClick={goPrev}
+            disabled={index === 0}
+            className="rounded-xl border border-border py-3.5 font-medium text-muted disabled:opacity-40 active:scale-[0.98] transition"
+          >
+            ← הקודם
+          </button>
+          <button
+            onClick={goNext}
+            className={`rounded-xl py-3.5 font-semibold active:scale-[0.98] transition ${
+              justRated ? "bg-accent text-white" : "border border-border text-muted"
+            }`}
+          >
+            {justRated ? "לדגם הבא →" : "דלג →"}
+          </button>
+        </div>
+        <p className="text-center text-muted text-xs mt-2">אפשר גם לנווט עם מקשי החצים</p>
       </div>
     </main>
   );
