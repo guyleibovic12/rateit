@@ -1,23 +1,39 @@
-version: "3.9"
-
 services:
   rateit:
-    build: .
+    build:
+      context: .
+      args:
+        # inlined into the frontend bundle at build time — set it in .env, see .env.example
+        NEXT_PUBLIC_GA_MEASUREMENT_ID: ${NEXT_PUBLIC_GA_MEASUREMENT_ID:-}
     image: rateit-app
     container_name: rateit
     restart: unless-stopped
     ports:
-      - "3000:3000"          # Change left side to use a different port on the host
+      - "127.0.0.1:3000:3000" # bound to localhost only — the native cloudflared service (see README) reaches it over localhost; nothing is exposed on the LAN
     volumes:
-      - rateit_data:/app/data  # Persistent database + uploaded images
+      - rateit_data:/app/data # persistent database + uploaded images
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/app/data
-      # IMPORTANT: Change this secret before deploying!
-      - SESSION_SECRET=change-this-to-a-long-random-secret-string
-      # Comma-separated list of admin usernames (lowercase)
+      # comma-separated usernames that get admin access automatically
       - ADMIN_USERNAMES=arik_admin
+
+  # OPTIONAL alternative to the native cloudflared systemd service set up by
+  # scripts/deploy-proxmox.sh. Only needed if you'd rather run the tunnel as a
+  # container instead of a host service. Not started by default (see the
+  # "docker-tunnel" profile) — enable with: docker compose --profile docker-tunnel up -d
+  # Create the tunnel + public hostname in the Cloudflare Zero Trust dashboard
+  # (Networks > Tunnels), pointing the hostname at http://rateit:3000, then
+  # put the tunnel token in .env as CLOUDFLARE_TUNNEL_TOKEN.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rateit-cloudflared
+    restart: unless-stopped
+    profiles: ["docker-tunnel"]
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - rateit
 
 volumes:
   rateit_data:
