@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { parseJsonResponse } from "@/lib/fetchJson";
 
 interface ModelRow {
   id: string;
@@ -56,9 +57,10 @@ export default function ModelsTab() {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/models/import", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "שגיאה בייבוא");
-      setImportMsg(`נוספו ${data.created} דגמים, עודכנו ${data.updated} מתוך ${data.total}`);
+      const { ok, data } = await parseJsonResponse<{ created: number; updated: number; total: number }>(res);
+      if (!ok) throw new Error((data as { error?: string }).error || "שגיאה בייבוא");
+      const d = data as { created: number; updated: number; total: number };
+      setImportMsg(`נוספו ${d.created} דגמים, עודכנו ${d.updated} מתוך ${d.total}`);
       load();
     } catch (err) {
       setImportMsg(err instanceof Error ? err.message : "שגיאה בייבוא");

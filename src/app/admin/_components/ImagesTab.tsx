@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { parseJsonResponse } from "@/lib/fetchJson";
 
 interface ModelOption {
   id: string;
@@ -15,13 +16,17 @@ interface ImageRow {
   filename: string;
 }
 
+const BATCH_SIZE = 20;
+
 export default function ImagesTab() {
   const [models, setModels] = useState<ModelOption[]>([]);
   const [unassigned, setUnassigned] = useState<ImageRow[] | null>(null);
   const [targetModel, setTargetModel] = useState<string>("");
   const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const folderRef = useRef<HTMLInputElement>(null);
 
   async function load() {
     const [modelsRes, imagesRes] = await Promise.all([
@@ -39,28 +44,64 @@ export default function ImagesTab() {
     load();
   }, []);
 
-  async function upload(files: FileList) {
+  async function upload(fileList: FileList) {
+    const files = Array.from(fileList).filter((f) => f.type.startsWith("image/"));
+    if (files.length === 0) {
+      setMsg("לא נמצאו קבצי תמונה בבחירה");
+      return;
+    }
+
     setUploading(true);
     setMsg("");
-    try {
+    setProgress({ done: 0, total: files.length });
+
+    let assigned = 0;
+    let unassignedCount = 0;
+    let failed = 0;
+    let lastError = "";
+
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      const batch = files.slice(i, i + BATCH_SIZE);
       const fd = new FormData();
       if (targetModel) fd.append("modelId", targetModel);
-      for (const f of Array.from(files)) fd.append("files", f);
-      const res = await fetch("/api/images", { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "שגיאה בהעלאה");
-      setMsg(
-        targetModel
-          ? `הועלו ${data.total} תמונות לדגם הנבחר`
-          : `${data.assigned} הותאמו אוטומטית, ${data.unassigned} ממתינות למיפוי ידני`
-      );
-      load();
-    } catch (err) {
-      setMsg(err instanceof Error ? err.message : "שגיאה בהעלאה");
-    } finally {
-      setUploading(false);
-      if (fileRef.current) fileRef.current.value = "";
+      for (const f of batch) fd.append("files", f);
+
+      try {
+        const res = await fetch("/api/images", { method: "POST", body: fd });
+        const { ok, data } = await parseJsonResponse(res);
+        if (!ok) {
+          failed += batch.length;
+          lastError = (data as { error?: string })?.error || "שגיאה בהעלאה";
+        } else {
+          const d = data as { assigned: number; unassigned: number };
+          assigned += d.assigned;
+          unassignedCount += d.unassigned;
+        }
+      } catch {
+        failed += batch.length;
+        lastError = "שגיאת רשת בהעלאה";
+      }
+
+      setProgress({ done: Math.min(i + BATCH_SIZE, files.length), total: files.length });
     }
+
+    setUploading(false);
+    setProgress(null);
+    if (fileRef.current) fileRef.current.value = "";
+    if (folderRef.current) folderRef.current.value = "";
+
+    const parts = [];
+    if (assigned || unassignedCount) {
+      parts.push(
+        targetModel
+          ? `הועלו ${assigned + unassignedCount} תמונות לדגם הנבחר`
+          : `${assigned} הותאמו אוטומטית, ${unassignedCount} ממתינות למיפוי ידני`
+      );
+    }
+    if (failed) parts.push(`${failed} תמונות נכשלו (${lastError})`);
+    setMsg(parts.join(" · ") || "לא הועלה כלום");
+
+    load();
   }
 
   async function assign(imageId: string, modelId: string) {
@@ -83,7 +124,7 @@ export default function ImagesTab() {
         <h2 className="font-semibold">העלאת תמונות</h2>
         <p className="text-muted text-sm">
           ניתן לבחור דגם מסוים, או להעלות קבוצה שלמה — המערכת תנסה להתאים אוטומטית לפי שם הקובץ / מק&quot;ט,
-          ותמונות שלא תואמו יחכו למיפוי ידני למטה.
+          ותמונות שלא תואמו יחכו למיפוי ידני למטה. העלאה גדולה (מאות תמונות) מתבצעת אוטומטית בקבוצות קטנות.
         </p>
         <select
           value={targetModel}
@@ -97,17 +138,53 @@ export default function ImagesTab() {
             </option>
           ))}
         </select>
-        <input
-          ref={fileRef}
-          type="file"
-          multiple
-          accept="image/*"
-          disabled={uploading}
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) upload(e.target.files);
-          }}
-          className="w-full text-sm text-muted"
-        />
+
+        <div className="grid grid-cols-2 gap-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">בחירת קבצים</span>
+            <input
+              ref={fileRef}
+              type="file"
+              multiple
+              accept="image/*"
+              disabled={uploading}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) upload(e.target.files);
+              }}
+              className="w-full text-xs text-muted"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-xs text-muted">בחירת תיקייה שלמה</span>
+            <input
+              ref={folderRef}
+              type="file"
+              // @ts-expect-error -- non-standard attributes for folder selection, supported in Chrome/Edge/Safari
+              webkitdirectory=""
+              directory=""
+              multiple
+              disabled={uploading}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length > 0) upload(e.target.files);
+              }}
+              className="w-full text-xs text-muted"
+            />
+          </label>
+        </div>
+
+        {progress && (
+          <div className="space-y-1">
+            <div className="h-2 rounded-full bg-surface-2 overflow-hidden">
+              <div
+                className="h-full bg-accent transition-all"
+                style={{ width: `${(progress.done / progress.total) * 100}%` }}
+              />
+            </div>
+            <p className="text-xs text-muted">
+              מעלה {progress.done} / {progress.total}...
+            </p>
+          </div>
+        )}
         {msg && <p className="text-sm text-accent-2">{msg}</p>}
       </section>
 
