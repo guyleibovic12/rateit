@@ -1,65 +1,60 @@
-# RateIt Local
+# RateIt
 
-Local desktop rating tool for Windows built with Electron, React, TypeScript, TailwindCSS, and SQLite persistence via `sql.js`.
+אפליקציית Web מותאמת מובייל לדירוג דגמי נעליים חדשים. נבנתה מחדש ב-Next.js, עם ממשק RTL מלא בעברית.
 
-The app now runs as a real local workflow:
+## קונספט
 
-- no seeded demo data is inserted on first launch
-- models are imported from a local CSV or Excel file
-- named users persist ratings and resume progress
-- anonymous users work in a temporary in-memory session only
+- **מדרגים (raters)** נכנסים עם שם או כ"אנונימי", ומדרגים כל דגם ב-1 עד 5 כוכבים. ניתן לדרג גם מהמקלדת (מקשים 1-5). האפליקציה זוכרת איפה כל מדרג הפסיק ומאפשרת להמשיך משם.
+- **מנהלים (admins)** מזוהים אוטומטית לפי שם משתמש (`ADMIN_USERNAMES`), ויכולים:
+  - לייבא דגמים מקובץ CSV / Excel
+  - להעלות תמונות ולמפות אותן לדגמים (באופן אוטומטי לפי שם קובץ / מק"ט, או ידנית)
+  - לראות דשבורד סיכום עם פילוח לפי דגם ולפי מדרג, עם סינונים (כולם / בעלי שם / אנונימיים / בחירה ידנית)
+  - לייצא את כל הדירוגים ל-CSV
 
-## Roles
+## טכנולוגיה
 
-- `rater`
-  - can login with a name or anonymously
-  - can rate models
-  - can see only their own progress and summary
-- `admin`
-  - can import models
-  - can import and map images
-  - can export summary data
-  - can filter and analyze all named raters
+- **Next.js 16** (App Router, TypeScript) — frontend + API routes באותו פרויקט
+- **Tailwind CSS v4** לעיצוב, RTL מלא
+- **SQLite** (`better-sqlite3`) לאחסון הנתונים — קובץ DB מקומי, ללא תלות בשירות חיצוני
+- תמונות נשמרות בדיסק המקומי (תיקיית `uploads` תחת `DATA_DIR`) ומוגשות דרך route מוגן (רק למשתמשים מחוברים)
 
-Admin access is not shown in the UI as a separate toggle.
-The role is assigned automatically when the entered name matches
+## הרצה מקומית
 
-## Main Features
+```bash
+npm install
+cp .env.example .env.local   # ולערוך ADMIN_USERNAMES לפי הצורך
+npm run dev
+```
 
-- Premium RTL desktop layout with right sidebar
-- Role-aware login
-- Fast rating screen with instant save
-- Keyboard shortcuts:
-  - `1` = `לא טוב`
-  - `2` = `טוב`
-  - `3` = `מצוין`
-- Explicit post-rating actions:
-  - `חזרה למסך הבית`
-  - `המשך לדגם הבא`
-- Fixed image containers with placeholder fallback
-- Model import from CSV / Excel
-- Image folder scan + image mapping flow
-- Last viewed model is remembered per named user
-- Central summary dashboard
-- Summary modes:
-  - per-rater breakdown
-  - per-model average
-- Rater filters in summary:
-  - all raters
-  - all named users
-  - manual multi-select
-  - include / exclude anonymous
-- CSV export for admin
+האפליקציה תרוץ על http://localhost:3000
 
-## Run
+## הרצה עם Docker
 
-On the first real run:
+```bash
+docker compose up -d --build
+```
 
-1. Login with a name, or continue as `anonymous`
-2. If you are the admin user, login as `arik_admin`
-3. Import models from CSV / Excel
-4. Start rating immediately
-    utils.ts
-database/
-  sample-models.csv
+הנתונים (DB + תמונות) נשמרים ב-volume בשם `rateit_data`, כך שהם שורדים restart/rebuild.
+
+## משתני סביבה
+
+| משתנה | ברירת מחדל | תיאור |
+|---|---|---|
+| `PORT` | `3000` | פורט השרת |
+| `DATA_DIR` | `./data` | תיקייה לקובץ ה-DB ולתמונות שהועלו |
+| `ADMIN_USERNAMES` | (ריק) | רשימת שמות משתמש (מופרדים בפסיק, לא תלוי רישיות) שמקבלים הרשאת מנהל אוטומטית בכניסה |
+
+## מבנה הפרויקט
+
+```
+src/
+  app/
+    page.tsx              # מסך כניסה
+    rate/page.tsx          # מסך דירוג למדרגים
+    admin/                 # דשבורד ניהול (דגמים / תמונות / סיכום)
+    api/                   # כל ה-API routes (auth, models, images, ratings, summary, export, files)
+  lib/
+    db.ts                  # אתחול SQLite + סכמה
+    auth.ts                # לוגיקת כניסה/session
+    types.ts
 ```

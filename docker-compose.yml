@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   rateit:
     build: .
@@ -7,16 +5,14 @@ services:
     container_name: rateit
     restart: unless-stopped
     ports:
-      - "3000:3000"          # Change left side to use a different port on the host
+      - "3000:3000" # change the left side to use a different host port
     volumes:
-      - rateit_data:/app/data  # Persistent database + uploaded images
+      - rateit_data:/app/data # persistent database + uploaded images
     environment:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/app/data
-      # IMPORTANT: Change this secret before deploying!
-      - SESSION_SECRET=change-this-to-a-long-random-secret-string
-      # Comma-separated list of admin usernames (lowercase)
+      # comma-separated usernames that get admin access automatically
       - ADMIN_USERNAMES=arik_admin
 
 volumes:
