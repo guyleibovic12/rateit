@@ -62,9 +62,18 @@ export default function RateHomePage() {
 
   const categories = useMemo(() => {
     if (!models) return [];
-    const set = new Set(models.map((m) => m.category).filter((c): c is string => !!c));
+    const scoped = brandFilter.size > 0 ? models.filter((m) => m.brand && brandFilter.has(m.brand)) : models;
+    const set = new Set(scoped.map((m) => m.category).filter((c): c is string => !!c));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [models]);
+  }, [models, brandFilter]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prune category selections that fell out of scope when the brand filter changed
+    setCategoryFilter((prev) => {
+      const next = new Set([...prev].filter((c) => categories.includes(c)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [categories]);
 
   const filtered = useMemo(() => {
     if (!models) return [];

@@ -74,9 +74,19 @@ export default function MySummaryPage() {
 
   const categories = useMemo(() => {
     if (!data) return [];
-    const set = new Set(data.ratings.map((r) => r.modelCategory).filter((c): c is string => !!c));
+    const scoped =
+      brandFilter.size > 0 ? data.ratings.filter((r) => r.modelBrand && brandFilter.has(r.modelBrand)) : data.ratings;
+    const set = new Set(scoped.map((r) => r.modelCategory).filter((c): c is string => !!c));
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [data]);
+  }, [data, brandFilter]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prune category selections that fell out of scope when the brand filter changed
+    setCategoryFilter((prev) => {
+      const next = new Set([...prev].filter((c) => categories.includes(c)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [categories]);
 
   const filteredRatings = useMemo(() => {
     if (!data) return [];
